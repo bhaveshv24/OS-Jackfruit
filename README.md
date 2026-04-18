@@ -104,6 +104,8 @@ sudo dmesg | grep container_monitor | tail -20
 
 <img width="1472" height="178" alt="image" src="https://github.com/user-attachments/assets/5ae245a5-f136-4947-8514-73c338d652d4" />
 
+
+
 <img width="1970" height="316" alt="image" src="https://github.com/user-attachments/assets/48c87a23-620f-4754-bb4d-ca9e9e188db3" />
 
 Two containers (alpha, beta) started under one supervisor. `ps` output shows PID, state, soft/hard memory limits, exit code, and stop reason for each container.
@@ -112,6 +114,8 @@ Two containers (alpha, beta) started under one supervisor. `ps` output shows PID
 
 <img width="1568" height="669" alt="image" src="https://github.com/user-attachments/assets/932a114e-b764-4687-8d8e-80b9ed52afac" />
 
+
+
 <img width="1568" height="696" alt="image" src="https://github.com/user-attachments/assets/9222e34c-6fef-4e88-be33-afef799006ff" />
 
 `logs alpha` shows captured stdout from the alpha container (hello lines). `logs beta` shows beta-running lines — each container's output is routed through the bounded-buffer pipeline and written to separate log files. The CLI communicates with the supervisor over a UNIX domain socket.
@@ -119,6 +123,8 @@ Two containers (alpha, beta) started under one supervisor. `ps` output shows PID
 ### Screenshot 5 & 6 — Soft-limit warning and hard-limit enforcement
 
 <img width="1946" height="348" alt="image" src="https://github.com/user-attachments/assets/502420e0-b08a-4a0d-8c8e-89781fc54292" />
+
+
 
 <img width="1082" height="68" alt="image" src="https://github.com/user-attachments/assets/d11d4c66-1591-4caa-af5d-d5d88f212130" />
 
@@ -137,6 +143,8 @@ Alpha completed approximately 6x more computation than beta in the same wall-clo
 ### Screenshot 8 — Clean teardown
 
 <img width="1774" height="492" alt="image" src="https://github.com/user-attachments/assets/d2e6a9ca-2cb2-4b33-add0-80546f3cc7eb" />
+
+
 
 <img width="1366" height="170" alt="image" src="https://github.com/user-attachments/assets/6a5879f1-cd08-45f3-be89-7fe727345970" />
 
@@ -222,6 +230,12 @@ The key insight is that CFS does not give strict time slices — it gives propor
 **Choice:** One producer thread per container, one shared consumer thread.  
 **Tradeoff:** N producer threads for N containers. For large numbers of containers this could create thread overhead. A single producer multiplexing all pipes with `select()` would scale better.  
 **Justification:** Simpler to implement correctly. Each producer owns exactly one pipe and one container ID, eliminating the need for complex multiplexing logic. For the scale of this project (2-4 containers), the overhead is negligible.
+
+### Scheduling Experiments
+
+**Choice:** Used `nice` values (-5 vs +10) with identical CPU-bound workloads to isolate the scheduler's priority weighting effect.  
+**Tradeoff:** Nice values affect CFS weight but don't pin processes to specific cores. On a multi-core VM both processes can run simultaneously, reducing observable competition and making the ratio smaller than the theoretical weight ratio.  
+**Justification:** Nice values are the simplest and most portable scheduling knob in Linux — no special privileges beyond running as root, no affinity masks needed. This lets us measure CFS proportional fairness directly without confounding variables from CPU pinning.
 
 ---
 
